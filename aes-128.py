@@ -345,7 +345,7 @@ if __name__ == "__main__":
     print("This program is written in Python 3.10.4")
 
     aes = aes()
-    # aes.change_s_box((a,b))
+    aes.change_s_box((a,b))
     [all_states,all_keys] = aes.encrypt(plaintext, key)
     
     print("-"*len("Key Schedule Results for Each Round with the modified ABS"))
