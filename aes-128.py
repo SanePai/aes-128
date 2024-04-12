@@ -1,16 +1,16 @@
 import numpy as np
 
 class aes:
-    sBox = list()
-    GaloisF2 = list()
-    GaloisF3 = list()
-    RCON = list()
+    sBox = []
+    GaloisF2 = []
+    GaloisF3 = []
+    RCON = []
 
     def __init__(self):
-        self.initTables()
+        self.init_tables()
 
     # Initialize Tables
-    def initTables(self):
+    def init_tables(self):
         # AES S-Box
         self.sBox = [
             0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -31,7 +31,7 @@ class aes:
             0x8C, 0xA1, 0x89, 0x0D, 0xBF, 0xE6, 0x42, 0x68, 0x41, 0x99, 0x2D, 0x0F, 0xB0, 0x54, 0xBB, 0x16
         ]
 
-        # GF 2^8 {2}
+        # GF 2^8 Multiplication by 2
         self.GaloisF2 = [
             0x00, 0x02, 0x04, 0x06, 0x08, 0x0a, 0x0c, 0x0e, 0x10, 0x12, 0x14, 0x16, 0x18, 0x1a, 0x1c, 0x1e,
             0x20, 0x22, 0x24, 0x26, 0x28, 0x2a, 0x2c, 0x2e, 0x30, 0x32, 0x34, 0x36, 0x38, 0x3a, 0x3c, 0x3e,
@@ -51,7 +51,7 @@ class aes:
             0xfb, 0xf9, 0xff, 0xfd, 0xf3, 0xf1, 0xf7, 0xf5, 0xeb, 0xe9, 0xef, 0xed, 0xe3, 0xe1, 0xe7, 0xe5
         ]
 
-        # GF 2^8 {3}
+        # GF 2^8 Multiplication by 3
         self.GaloisF3 = [
             0x00, 0x03, 0x06, 0x05, 0x0c, 0x0f, 0x0a, 0x09, 0x18, 0x1b, 0x1e, 0x1d, 0x14, 0x17, 0x12, 0x11,
             0x30, 0x33, 0x36, 0x35, 0x3c, 0x3f, 0x3a, 0x39, 0x28, 0x2b, 0x2e, 0x2d, 0x24, 0x27, 0x22, 0x21,
@@ -71,14 +71,14 @@ class aes:
             0x0b, 0x08, 0x0d, 0x0e, 0x07, 0x04, 0x01, 0x02, 0x13, 0x10, 0x15, 0x16, 0x1f, 0x1c, 0x19, 0x1a
         ]
 
-        # RCON table for ten rounds (x^i-1 in Keyschedule)
+        # RCON (round constant) table for ten rounds (x^i-1 in Keyschedule)
         self.RCON = ["01", "02", "04", "08", "10", "20", "40", "80", "1b", "36"]
 
     def change_s_box(self, ab):
         '''
-        Function to modify s-box from (a,b). 
-        Input: s_box (global), ab - tuple calculated from ID numbers
-        Output: modified s-box
+        Function to modify s-box from (a,b).
+        Input: s_box, ab - tuple calculated from ID numbers
+        Output: Modifies s-box in place. 
         '''    
         sb = self.sBox
         sb = np.reshape(sb, (16,16))
@@ -89,55 +89,55 @@ class aes:
         self.sBox = sb.reshape(1,256).tolist()[0]
 
     # Initialize state matrix
-    def initSteMat(self, plaintext):
-        state = []
-        for i in range(len(plaintext)//2):
-            state.append(plaintext[2*i:2*(i+1)])
+    def init_state_mat(self, plaintext):
+        '''
+        Initialize the state matrix by splitting the plaintext into 16 groups of 2 hex numbers (8 bits) each.
+        The state matrix is a 1x16 matrix and the elements are column wise (not row wise)
+        Input: Plaintext
+        Output: state matrix
+        '''
+        state = [plaintext[2*i:2*(i+1)] for i in range(len(plaintext)//2)]
         return state
 
-    # Opertaion Functions
     def xor(self, left, right):
-
-        out = int('0x{}'.format(left), 0) ^ int('0x{}'.format(right), 0)
+        '''
+        Helper function to perform XOR on two hex numbers and output a hex number (2-digit)
+        Input: 2 hex numbers to be XORed
+        Output: hex output
+        '''
+        out = int('0x{}'.format(left), 16) ^ int('0x{}'.format(right), 16)
         out = str(hex(out))[2:]
-
         if len(out) < 2:
             out = "0" + out
-
         return out
 
-    def rotateWord(self, word):
-        return word[1:] + word[:1]
-
-    # Key Schedule 1st part
-    def SboxMatch(self, word, round):
-        output = []
-        outString = ''
-
-        while word:
-            output.append(word[0:2])
-            word = word[2:]
-
-        output = self.rotateWord(output)
+    def fnT(self, word, round):
+        '''
+        Helper function to calculate T[W[4i-1]] in key schedule
+        Input: W[4i-1], round (to get the RCON (x^i-1) for that round)
+        Output: T[W[4i-1]]
+        '''
+        output = [word[2*i:2*(i+1)] for i in range(len(word)//2)]
+        output = output[1:] + output[:1]
 
         for index in range(len(output)):
-            out = int("0x{}".format(output[index]), 0)
+            out = int(f"0x{output[index]}", 16)
             out = str(hex(self.sBox[out]))[2:]
 
             if len(out) < 2:
                 out = "0" + out
-
             output[index] = out
 
         output[0] = self.xor(output[0], self.RCON[round])
+        output = "".join(output)
+        return output
 
-        for char in output:
-            outString += char
-
-        return outString
-
-
-    def keySchedule(self, key, round):
+    def expand_key(self, key, round):
+        '''
+        Function to expand the key and get the round key for the next round
+        Input: Current key, round number
+        Output: New key
+        '''
         words = []
         roundKey = [None, None, None, None]
 
@@ -145,48 +145,58 @@ class aes:
             words.append(key[:8])
             key = key[8:]
 
-        roundKey[0] = self.xor(words[0], self.SboxMatch(words[3], round)).zfill(8)
+        roundKey[0] = self.xor(words[0], self.fnT(words[3], round)).zfill(8)
         roundKey[1] = self.xor(words[1], roundKey[0]).zfill(8)
         roundKey[2] = self.xor(words[2], roundKey[1]).zfill(8)
         roundKey[3] = self.xor(words[3], roundKey[2]).zfill(8)
 
         return roundKey
 
-    # KEY ADDITION
-    def keyAddition(self, state, key):
-        stateString = ''
-        keyString = ''
-        newState = []
+    # Key Addition
+    def add_round_key(self, state, key):
+        '''
+        Add round key to the state
+        Input: Current state, key
+        Output: New state
+        '''
+        state_string = ''.join(state)
+        key_string = ''.join(key)
+        state_string = self.xor(state_string, key_string).zfill(len(state_string))
+        new_state = [state_string[2*i:2*(i+1)] for i in range(len(state_string)//2)]
+
+        return new_state
+
+    # Byte Substitution
+    def sub_bytes(self, state):
+        '''
+        Substitute bytes from S-box
+        Input: State
+        Output: New state
+        '''
+        new_state = []
 
         for byte in state:
-            stateString += byte
-
-        for word in key:
-            keyString += word
-        stateString = self.xor(stateString, keyString).zfill(len(stateString))
-        while stateString:
-            newState.append(stateString[:2])
-            stateString = stateString[2:]
-
-        return newState
-
-    # BYTE SUBSTITUTION
-    def byteSubstitution(self, state):
-        newState = []
-
-        for byte in state:
-            out = int("0x{}".format(byte), 0)
+            out = int(f"0x{byte}", 16)
             out = str(hex(self.sBox[out]))[2:]
 
             if len(out) < 2:
                 out = "0" + out
 
-            newState.append(out)
+            new_state.append(out)
 
-        return newState
+        return new_state
 
-    # SHIFT ROWS
-    def shiftRows(self, state):
+    # Shift Rows
+    def shift_rows(self, state):
+        '''
+        Shift rows cyclically
+        Row 0 - No shift
+        Row 1 - Shift by 1
+        Row 2 - Shift by 2
+        Row 3 - Shift by 3
+        Input: Current state
+        Output: New state
+        '''
         state = np.reshape(state, (4,4)).T
         state[1] = np.append(state[1, 1:], state[1, :1])
         state[2] = np.append(state[2, 2:], state[2, :2])
@@ -194,84 +204,111 @@ class aes:
         state = np.resize(state.T, (1,16)).tolist()[0]
         return state
 
-    # MIX COLUMNS
-    def mixColumn(self, subState):
-        newSubState = []
-        currentMultRound = 0
+    # Mix Columns
+    def col_matrix_mult(self, state_col):
+        '''
+        Helper function to multiply with the M matrix
+        M = [[02 03 01 01]
+             [01 02 03 01]
+             [01 01 02 03]
+             [03 01 01 02]]
+        Since the state matrix is column wise, the multiplication here is with the transpose
+        of M. Therefore the new state matrix would also be column wise.
+        Input - 4 elements from the state matrix (one column)
+        Output - 4 elements from the new state matrix (one column)
+        '''
+        new_state_col = []
 
-        while len(newSubState) < 4:
-            out = int()
+        one = self.GaloisF2[int(f"0x{state_col[0]}", 16)]
+        two = self.GaloisF3[int(f"0x{state_col[1]}", 16)]
+        three = int(f"0x{state_col[2]}", 16)
+        four = int(f"0x{state_col[3]}", 16)
 
-            if currentMultRound == 0:
-                one = self.GaloisF2[int("0x{}".format(subState[0]), 0)]
-                two = self.GaloisF3[int("0x{}".format(subState[1]), 0)]
-                three = int("0x{}".format(subState[2]), 0)
-                four = int("0x{}".format(subState[3]), 0)
+        out = one ^ two ^ three ^ four
+        out = str(hex(out))[2:]
+        if len(out) < 2:
+            out = "0" + out
+        new_state_col.append(out)
 
-                out = one ^ two ^ three ^ four
-            elif currentMultRound == 1:
-                one = int("0x{}".format(subState[0]), 0)
-                two = self.GaloisF2[int("0x{}".format(subState[1]), 0)]
-                three = self.GaloisF3[int("0x{}".format(subState[2]), 0)]
-                four = int("0x{}".format(subState[3]), 0)
+        one = int(f"0x{state_col[0]}", 16)
+        two = self.GaloisF2[int(f"0x{state_col[1]}", 16)]
+        three = self.GaloisF3[int(f"0x{state_col[2]}", 16)]
+        four = int(f"0x{state_col[3]}", 16)
 
-                out = one ^ two ^ three ^ four
-            elif currentMultRound == 2:
-                one = int("0x{}".format(subState[0]), 0)
-                two = int("0x{}".format(subState[1]), 0)
-                three = self.GaloisF2[int("0x{}".format(subState[2]), 0)]
-                four = self.GaloisF3[int("0x{}".format(subState[3]), 0)]
+        out = one ^ two ^ three ^ four
+        out = str(hex(out))[2:]
+        if len(out) < 2:
+            out = "0" + out
+        new_state_col.append(out)
 
-                out = one ^ two ^ three ^ four
-            else:
-                one = self.GaloisF3[int("0x{}".format(subState[0]), 0)]
-                two = int("0x{}".format(subState[1]), 0)
-                three = int("0x{}".format(subState[2]), 0)
-                four = self.GaloisF2[int("0x{}".format(subState[3]), 0)]
+        one = int(f"0x{state_col[0]}", 16)
+        two = int(f"0x{state_col[1]}", 16)
+        three = self.GaloisF2[int(f"0x{state_col[2]}", 16)]
+        four = self.GaloisF3[int(f"0x{state_col[3]}", 16)]
 
-                out = one ^ two ^ three ^ four
-            out = str(hex(out))[2:]
-            if len(out) < 2:
-                out = "0" + out
+        out = one ^ two ^ three ^ four
+        out = str(hex(out))[2:]
+        if len(out) < 2:
+            out = "0" + out
+        new_state_col.append(out)
 
-            newSubState.append(out)
-            currentMultRound += 1
+        one = self.GaloisF3[int(f"0x{state_col[0]}", 16)]
+        two = int(f"0x{state_col[1]}", 16)
+        three = int(f"0x{state_col[2]}", 16)
+        four = self.GaloisF2[int(f"0x{state_col[3]}", 16)]
 
-        return newSubState
+        out = one ^ two ^ three ^ four
+        out = str(hex(out))[2:]
+        if len(out) < 2:
+            out = "0" + out
+        new_state_col.append(out)
+        return new_state_col
 
-    def mixColumns(self, state):
-        subState = []
-        while state:
-            subState += self.mixColumn(state[:4])
+    def mix_cols(self, state):
+        '''
+        Mix columns by multiplying with the M matrix
+        Input: Current state
+        Output: New state
+        '''
+        new_state = []
+        for i in range(4):
+            new_state += self.col_matrix_mult(state[:4])
             state = state[4:]
 
-        return subState
-
+        return new_state
 
     def encrypt(self, plaintext, key):
+        '''
+        Encrypt using AES
+        R0 - ARK
+        R1 to R9 - BS, SR, MC, ARK
+        R10 - BS , SR, ARK
+        Input: plaintext, key
+        Output: all_states - State after each round, all_keys - Keys for each round
+        '''
         all_keys=[]
         all_states = []
-        state = self.initSteMat(plaintext)
+        state = self.init_state_mat(plaintext)
         all_states.append("".join((map(str, state))))
         # Round 0 ARK
-        state = self.keyAddition(state, key)
+        state = self.add_round_key(state, key)
         all_keys.append(key)
         all_states.append("".join((map(str, state))))
         
         for round in range(10):
             #BS
-            state = self.byteSubstitution(state)
+            state = self.sub_bytes(state)
 
             #SR
-            state = self.shiftRows(state)
+            state = self.shift_rows(state)
 
             #MC
             if round < 9:
-                state = self.mixColumns(state)
+                state = self.mix_cols(state)
             
             #ARK
-            key = self.keySchedule("".join(key), round)
-            state = self.keyAddition(state, key)
+            key = self.expand_key("".join(key), round)
+            state = self.add_round_key(state, key)
             all_states.append("".join((map(str, state))))
             all_keys.append("".join((map(str, key))))
 
@@ -283,8 +320,7 @@ def string_with_spaces(string, number):
     '''
     x = []
     string = string.upper()
-    for i in range(len(string)//number):
-        x.append(string[number*i:number*i+number])
+    x = [string[number*i:number*(i+1)] for i in range(len(string)//number)]
     return " ".join(x)
 
 
@@ -309,7 +345,7 @@ if __name__ == "__main__":
     print("This program is written in Python 3.10.4")
 
     aes = aes()
-    aes.change_s_box((a,b))
+    # aes.change_s_box((a,b))
     [all_states,all_keys] = aes.encrypt(plaintext, key)
     
     print("-"*len("Key Schedule Results for Each Round with the modified ABS"))
@@ -328,4 +364,3 @@ if __name__ == "__main__":
         print(f"----Output: {string_with_spaces(all_states[i+1],2)}")
 
     print("-"*60) 
-    
