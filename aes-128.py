@@ -338,8 +338,8 @@ if __name__ == "__main__":
     b = (s2%8)+8
     print(f"Group Code (A,B) = ({a},{b})")
 
-    plaintext = "00112233445566778899AABBCCDDEEFF"
-    key = "000102030405060708090A0B0C0D0E0F"
+    plaintext = "0000000000000000000000000000abd2"
+    key = "1a0c24f2875495bcb7080e43920f5682"
 
     print(f"Assigned Plaintext and Key:\n\t{string_with_spaces(plaintext,2)}\n\t{string_with_spaces(key,2)}\n")
     print("This program is written in Python 3.10.4")
@@ -348,9 +348,9 @@ if __name__ == "__main__":
     aes.change_s_box((a,b))
     [all_states,all_keys] = aes.encrypt(plaintext, key)
     
-    print("-"*len("Key Schedule Results for Each Round with the modified ABS"))
-    print("Key Schedule Results for Each Round with the modified ABS")
-    print("-"*len("Key Schedule Results for Each Round with the modified ABS"))
+    print("-"*len("Key Schedule Results for Each Round with the modified AES"))
+    print("Key Schedule Results for Each Round with the modified AES")
+    print("-"*len("Key Schedule Results for Each Round with the modified AES"))
     for i in range(len(all_keys)):
         print(f"Round {i}:\n\tKey: {string_with_spaces(all_keys[i],2)}")
 
@@ -363,4 +363,4 @@ if __name__ == "__main__":
             print(f"-----Start: {string_with_spaces(all_states[0],2)}")
         print(f"----Output: {string_with_spaces(all_states[i+1],2)}")
 
-    print("-"*60) 
+    print("-"*60)
